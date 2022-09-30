@@ -3,26 +3,18 @@
  * Tone Generator using Direct Digital Synthesis (DDS) with AD9833 chip and arduino nano iot 33
  */
 #include <Arduino.h>
-#include <U8x8lib.h>
 #include <SPI.h>
 
 // +---------------------------------------------------------------------------------+
 // |                             Digial Pin Configuration                            |
 // +---------------------------------------------------------------------------------+
-#define PIN_INDICATOR 2 // Screen reset pin or LED
+#define PIN_INDICATOR 19 // Screen reset pin or LED
 #define PIN_ENCODER1 4
 #define PIN_ENCODER2 5
 #define PIN_BUTTON 6 // encoder push button
 #define PIN_CSON 8 // Input signal for CS on
 #define PIN_SOUND_ON 9
 #define PIN_VOLUME 10 // variable registor
-
-// +---------------------------------------------------------------------------------+
-// |                   SSD1306 based OLED Screen Configuration                       |
-// +---------------------------------------------------------------------------------+
-// Default pins for I2C.
-// SCL : A5, SDA : A4
-U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
 
 // +---------------------------------------------------------------------------------+
 // |                            AD9833 Configuration                                 |
@@ -52,13 +44,6 @@ word getLSB(double freq);
 word getMSB(double freq);
 void setFreq(double freq);
 void setVolume(int volume);
-void changeMode(bool isIncrease);
-void changeValue(bool isIncrease);
-
-// Button states
-bool buttonStatus = false;
-bool waitForL1 = false;
-bool waitForL2 = false;
 
 // Setting Value
 bool isSetMode = false;
@@ -129,124 +114,18 @@ void setup() {
   pinMode(PIN_VOLUME, OUTPUT);
   digitalWrite(PIN_VOLUME, HIGH);
 
-  // Screen Init.
-  u8x8.begin();
-  u8x8.setFlipMode(true);
-  u8x8.setPowerSave(0);
-  u8x8.setFont(u8x8_font_profont29_2x3_f);
-  u8x8.drawString(0,0,"Tone");
-  u8x8.drawString(0,4, "Gen V1");
-
-  while (millis() < 2000){};
-  
   // Load Default Settings
   setFreq(freq);
   setVolume(volume);
-  
-  Serial.println(freq);
 
-
-  u8x8.clear();
-  u8x8.drawString(0,0,"Freq :");
-  u8x8.drawString(4,4,String(int(freq)).c_str());
 }
-
-bool L1;
-bool L2;
 
 void loop() {
 
 // +---------------------------------------------------------------------------------+
-// |                                 Check Button Click                              |
-// +---------------------------------------------------------------------------------+
-  if (digitalRead(PIN_BUTTON)==LOW){ // LOW on press
-    if(buttonStatus == false){
-      if (!isSetMode){
-        u8x8.clearLine(0);
-        u8x8.clearLine(1);
-        u8x8.clearLine(2);
-        switch(mode){
-          case 0:
-            u8x8.drawString(0,0,"Set Freq");
-            break;
-          case 1:
-            u8x8.drawString(0,0,"Set Vol");
-            break;
-          case 2:
-            u8x8.drawString(0,0,"Set Smth");
-            break;
-          case 3:
-            u8x8.drawString(0,0,"Set Man");
-            break;
-        }
-        isSetMode = true;
-      }
-      else {
-        //setFreq(freq);
-        u8x8.clearLine(0);
-        u8x8.clearLine(1);
-        u8x8.clearLine(2);
-        switch(mode){
-          case 0:
-            u8x8.drawString(0,0,"Freq :");
-            break;
-          case 1:
-            u8x8.drawString(0,0,"Vol :");
-            break;
-          case 2:
-            u8x8.drawString(0,0,"Smooth :");
-            break;
-          case 3:
-            u8x8.drawString(0,0,"Manual :");
-            break;
-        }
-        isSetMode = false;
-      }      
-      buttonStatus = true;
-    }
-  }
-  else {
-    buttonStatus = false;
-  }
-
-// +---------------------------------------------------------------------------------+
-// |                               Check Button Rotation                             |
-// +---------------------------------------------------------------------------------+
-  L1 = !digitalRead(PIN_ENCODER1);
-  L2 = !digitalRead(PIN_ENCODER2);
-
-  if(L1 || L2){
-    if(L1 && !L2){ 
-      if(waitForL2 == false){
-        waitForL2 = true;  
-      }
-      if(waitForL1 == true) { // CW rotation
-        if (isSetMode) changeValue(true);
-        else changeMode(true);
-        waitForL1 = false;
-      }
-    }
-  
-    if(!L1 && L2) {
-      if(waitForL1 == false) {
-        waitForL1 = true;
-      }
-      if(waitForL2 == true) { // CCW rotation
-        if (isSetMode) changeValue(false); 
-        else changeMode(false);
-        waitForL2 = false;
-      }
-    }
-  }
-  else {
-    waitForL1 = false;
-    waitForL2 = false;
-  }
-
-// +---------------------------------------------------------------------------------+
 // |                                     CS On Off                                   |
 // +---------------------------------------------------------------------------------+
-  soundOn = manualSoundOn || !digitalRead(PIN_CSON);
+  soundOn = !digitalRead(PIN_BUTTON) || !digitalRead(PIN_CSON);
   if(soundOn != prevSoundOn) rampUpStatus = 0;
   
   if(soundOn){
@@ -297,75 +176,6 @@ void loop() {
   prevSoundOn = soundOn;
 }
 
-// update mode
-void changeMode(bool isIncrease) {
-  if (isIncrease) {
-    if (mode < 3) mode++;
-    else mode = 0;
-  }
-  else {
-    if (mode > 0) mode--;
-    else mode = 3;
-  }
-  // clear all lines
-  u8x8.clear();
-  switch(mode){
-    case 0:
-      u8x8.drawString(0,0,"Freq :");
-      u8x8.drawString(4,4,String(int(freq)).c_str());
-      break;
-    case 1:
-      u8x8.drawString(0,0,"Vol :");
-      u8x8.drawString(4,4,String(int(volume)).c_str());
-      break;
-    case 2:
-      u8x8.drawString(0,0,"Smooth :");
-      u8x8.drawString(4,4,String(int(rampUp)).c_str());
-      break;
-    case 3:
-      u8x8.drawString(0,0,"Manual :");
-      if (manualSoundOn) u8x8.drawString(4,4,"ON");
-      else u8x8.drawString(4,4,"OFF");
-      break;
-  }
-}
-
-void changeValue(bool isIncrease) {
-  // clear value
-  u8x8.clearLine(3);
-  u8x8.clearLine(4);
-  u8x8.clearLine(5);
-  u8x8.clearLine(6);
-  u8x8.clearLine(7);
-
-  switch(mode){
-    case 0:
-      if (isIncrease) freq = min(freq + Chn_freq, Max_freq);
-      else freq = max(freq - Chn_freq, Min_freq); 
-      setFreq(freq);
-      u8x8.drawString(4,4,String(int(freq)).c_str());
-      break;
-    case 1:
-      if (isIncrease) volume = min(volume + Chn_volume, Max_volume);
-      else volume = max(volume - Chn_volume, Min_volume); 
-      setVolume(volume);
-      u8x8.drawString(4,4,String(int(volume)).c_str());
-      break;
-    case 2:
-      if (isIncrease) rampUp = min(rampUp + Chn_rampUp, Max_rampUp);
-      else rampUp = max(rampUp - Chn_rampUp, Min_rampUp); 
-      u8x8.drawString(0,0,"Smooth :");
-      u8x8.drawString(4,4,String(int(rampUp)).c_str());
-      break;
-    case 3:
-      manualSoundOn = !manualSoundOn;
-      u8x8.drawString(0,0,"Manual :");
-      if (manualSoundOn) u8x8.drawString(4,4,"ON");
-      else u8x8.drawString(4,4,"OFF");
-      break;
-  }
-}
-
 // set frequency registor
 void setFreq(double freq){
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE2));
@@ -388,8 +198,6 @@ void setFreq(double freq){
   SPI.transfer16(control);
   digitalWrite(PIN_CS_AD9833, HIGH);
   SPI.endTransaction();
-  Serial.print("Freq : ");
-  Serial.println(freq);
 }
 
 // Calculate Frequency setting words
@@ -412,6 +220,4 @@ void setVolume(int volume){
   SPI.transfer(data);
   digitalWrite(PIN_VOLUME, HIGH);
   SPI.endTransaction();
-  Serial.print("Volume : ");
-  Serial.println(volume);
 }
