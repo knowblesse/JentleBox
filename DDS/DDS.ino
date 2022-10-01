@@ -1,27 +1,32 @@
-/* RatSinger
+/* JentleBox
  * @Knowblesse 2022
- * Tone Generator using Direct Digital Synthesis (DDS) with AD9833 chip and arduino nano iot 33
+ * Fear conditioning box with internal tone generator
  */
-#include <Arduino.h>
 #include <SPI.h>
 
 // +---------------------------------------------------------------------------------+
 // |                             Digial Pin Configuration                            |
 // +---------------------------------------------------------------------------------+
-#define PIN_INDICATOR 19 // Screen reset pin or LED
-#define PIN_ENCODER1 4
-#define PIN_ENCODER2 5
-#define PIN_BUTTON 6 // encoder push button
-#define PIN_CSON 8 // Input signal for CS on
-#define PIN_SOUND_ON 9
-#define PIN_VOLUME 10 // variable registor
+#define PIN_IO_TERMINAL1 2
+#define PIN_IO_TERMINAL2 3
+#define PIN_IO_TERMINAL3 4
+#define PIN_IO_TERMINAL4 5
+#define PIN_BTN_CLK 6
+#define PIN_CS_TRIGGER 7 // digital input signal for external cs on trigger
+#define PIN_CS_ENABLE 8  // when on, DDS signal can be relayed to the output
+#define PIN_BTN_R1 9
+#define PIN_BTN_R2 10
+#define PIN_RESISTOR_CS 16
+#define PIN_DDS_CS 17
+#define PIN_LCD_A0 18
+#define PIN_LCD_RESET 19
+#define PIN_LCD_CS 20
+#define PIN_LCD_LED 21
 
 // +---------------------------------------------------------------------------------+
 // |                            AD9833 Configuration                                 |
 // +---------------------------------------------------------------------------------+
-// AD9833 uses SPI communication. Default pins with D3 for Chip Select were used. 
 // COPI : 11, SCLK : 13 (CIPO : 12)
-#define PIN_CS_AD9833 3
 #define CLK 25000000
 // +-----+-----+--------------------+---------+---------+---------+----+-------+
 // | D15 | D14 |        D13         |   D12   |   D11   |   D10   | D9 |  D8   |
@@ -88,31 +93,45 @@ int volumeList[150] = {\
 int mode = 0; // 0:Freq, 1:volume, 2:Ramp Up, 3:Manual 
 
 void setup() {
+  
+  // Initialize Pins
+  pinMode(PIN_IO_TERMINAL1, OUTPUT);
+  pinMode(PIN_IO_TERMINAL2, OUTPUT);
+  pinMode(PIN_IO_TERMINAL3, OUTPUT);
+  pinMode(PIN_IO_TERMINAL4, OUTPUT);
+  pinMode(PIN_BTN_CLK, INPUT_PULLUP);
+  pinMode(PIN_CS_TRIGGER, INPUT_PULLUP);
+  pinMode(PIN_CS_ENABLE, OUTPUT);
+  pinMode(PIN_BTN_R1, INPUT_PULLUP);
+  pinMode(PIN_BTN_R2, INPUT_PULLUP);
+  pinMode(PIN_RESISTOR_CS, OUTPUT);
+  pinMode(PIN_DDS_CS, OUTPUT);
+  pinMode(PIN_LCD_A0, OUTPUT);
+  pinMode(PIN_LCD_RESET, OUTPUT);
+  pinMode(PIN_LCD_CS, OUTPUT);
+  pinMode(PIN_LCD_LED, OUTPUT);
+
   Serial.begin(9600);
-  Serial.setTimeout(2000);
-  Serial.println("Started");
   SPI.begin();
 
-  // CS Indicator
-  pinMode(PIN_INDICATOR, OUTPUT);
-  
-  // CS Init.
-  pinMode(PIN_CS_AD9833, OUTPUT);
-  digitalWrite(PIN_CS_AD9833, HIGH);
+  // Initialize output pins
+  digitalWrite(PIN_IO_TERMINAL1, LOW);
+  digitalWrite(PIN_IO_TERMINAL2, LOW);
+  digitalWrite(PIN_IO_TERMINAL3, LOW);
+  digitalWrite(PIN_IO_TERMINAL4, LOW);
 
-  // Button Init.
-  pinMode(PIN_ENCODER1, INPUT);
-  pinMode(PIN_ENCODER2, INPUT);
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
+  digitalWrite(PIN_CS_ENABLE, LOW);
 
-  // CS On Input Signal Init.
-  pinMode(PIN_CSON, INPUT_PULLUP);
+  digitalWrite(PIN_RESISTOR_CS, HIGH);
 
-  // Tone On/Off Init.
-  pinMode(PIN_SOUND_ON, OUTPUT);
-  digitalWrite(PIN_SOUND_ON, LOW);
-  pinMode(PIN_VOLUME, OUTPUT);
-  digitalWrite(PIN_VOLUME, HIGH);
+  digitalWrite(PIN_DDS_CS, HIGH);
+
+  digitalWrite(PIN_LCD_A0, LOW);
+  digitalWrite(PIN_LCD_RESET, LOW);
+  digitalWrite(PIN_LCD_CS, HIGH);
+  digitalWrite(PIN_LCD_LED, LOW);
+
+  while (millis() < 2000){};
 
   // Load Default Settings
   setFreq(freq);
@@ -125,13 +144,13 @@ void loop() {
 // +---------------------------------------------------------------------------------+
 // |                                     CS On Off                                   |
 // +---------------------------------------------------------------------------------+
-  soundOn = !digitalRead(PIN_BUTTON) || !digitalRead(PIN_CSON);
+  soundOn = true;//!digitalRead(PIN_BTN_CLK) || !digitalRead(PIN_CS_TRIGGER);
   if(soundOn != prevSoundOn) rampUpStatus = 0;
   
   if(soundOn){
-    digitalWrite(PIN_INDICATOR, HIGH);
     if(rampUpStatus == 0){
       // start ramping up
+      Serial.println("Start Rampup");
       changeStartTime = millis();
       if (rampUp == 0){
         rampUpStatus = 2;
@@ -141,7 +160,7 @@ void loop() {
         rampUpStatus = 1;
         setVolume(Min_volume);
       }
-      digitalWrite(PIN_SOUND_ON, HIGH);
+      digitalWrite(PIN_CS_ENABLE, HIGH);
     }
     else if (rampUpStatus == 1) {
       currentTime = millis() - changeStartTime; 
@@ -152,13 +171,13 @@ void loop() {
     }
   } 
   else {
-    digitalWrite(PIN_INDICATOR, LOW);
     if(rampUpStatus == 0){
       // start ramping up
+      Serial.println("Start rampdown");
       changeStartTime = millis();
       if (rampUp == 0){
         rampUpStatus = 2;
-        digitalWrite(PIN_SOUND_ON, LOW);
+        digitalWrite(PIN_CS_ENABLE, LOW);
       }
        else rampUpStatus = 1;
     }
@@ -169,7 +188,7 @@ void loop() {
       }
       else {
         rampUpStatus = 2;
-        digitalWrite(PIN_SOUND_ON, LOW);
+        digitalWrite(PIN_CS_ENABLE, LOW);
       }
     }
   }
@@ -182,21 +201,21 @@ void setFreq(double freq){
   word lsb = getLSB(freq);
   word msb = getMSB(freq);
   // Start Writing
-  digitalWrite(PIN_CS_AD9833, LOW);
+  digitalWrite(PIN_DDS_CS, LOW);
   SPI.transfer16(reset); // Reset 
-  digitalWrite(PIN_CS_AD9833, HIGH);
-  digitalWrite(PIN_CS_AD9833, LOW);
+  digitalWrite(PIN_DDS_CS, HIGH);
+  digitalWrite(PIN_DDS_CS, LOW);
   SPI.transfer16(lsb);
-  digitalWrite(PIN_CS_AD9833, HIGH);
-  digitalWrite(PIN_CS_AD9833, LOW);
+  digitalWrite(PIN_DDS_CS, HIGH);
+  digitalWrite(PIN_DDS_CS, LOW);
   SPI.transfer16(msb);
-  digitalWrite(PIN_CS_AD9833, HIGH);
-  digitalWrite(PIN_CS_AD9833, LOW);
+  digitalWrite(PIN_DDS_CS, HIGH);
+  digitalWrite(PIN_DDS_CS, LOW);
   SPI.transfer16(phase);
-  digitalWrite(PIN_CS_AD9833, HIGH);
-  digitalWrite(PIN_CS_AD9833, LOW);
+  digitalWrite(PIN_DDS_CS, HIGH);
+  digitalWrite(PIN_DDS_CS, LOW);
   SPI.transfer16(control);
-  digitalWrite(PIN_CS_AD9833, HIGH);
+  digitalWrite(PIN_DDS_CS, HIGH);
   SPI.endTransaction();
 }
 
@@ -215,9 +234,9 @@ word getMSB(double freq)
 void setVolume(int volume){
   byte data = 255 - volumeList[volume-1];
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  digitalWrite(PIN_VOLUME, LOW);
+  digitalWrite(PIN_RESISTOR_CS, LOW);
   SPI.transfer(0);
   SPI.transfer(data);
-  digitalWrite(PIN_VOLUME, HIGH);
+  digitalWrite(PIN_RESISTOR_CS, HIGH);
   SPI.endTransaction();
 }
