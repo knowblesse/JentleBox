@@ -7,6 +7,7 @@
 #include <SPI.h>
 #include <U8g2lib.h>
 #include "SYUI.h"
+#include "Schedule.h"
 
 // +---------------------------------------------------------------------------------+
 // |                             Digial Pin Configuration                            |
@@ -52,7 +53,7 @@ unsigned long currentTime;
 
 int mode = 0; // 0:Freq, 1:volume, 2:Ramp Up, 3:Manual 
 
-SYUI lcd = SYUI(PIN_LCD_CS, PIN_LCD_A0, PIN_LCD_RESET);
+SYUI *lcd;
 AD9833 ad9833 = AD9833(400000, PIN_DDS_CS);
 VarRes varres = VarRes(400000, PIN_RESISTOR_CS);
 
@@ -73,10 +74,6 @@ void setup() {
   Serial.begin(9600);
   
   SPI.begin();
-  screen.begin();
-  screen.clearDisplay();  
-  screen.setContrast(100);
-  screen.clearDisplay();
 
   // Initialize output pins
   digitalWrite(PIN_IO_TERMINAL1, LOW);
@@ -88,14 +85,20 @@ void setup() {
 
   digitalWrite(PIN_DDS_CS, HIGH);
 
-  while (millis() < 2000){};
-
   // Load Default Settings
   ad9833.sendReset();
   ad9833.sendFrequency(freq);
   ad9833.sendControl();
   varres.setVolume(0);
+  static SYUI temp = SYUI(20, 18, 19);
+  lcd = &temp;
+  initializeExpParam();
 
+  // Show Screen
+  temp.DispWlcm();
+  delay(2000);
+  temp.DispWlcmImage();
+  delay(2000);
 }
 
 void setOutputState(bool state)
@@ -127,65 +130,139 @@ enum UIState
   
 int currentUI = UI_select_experiment;
 
-struct ExpParam
-{
-  double habituation_time;
-  double cs_duration;
-  double us_onset;
-  double us_duration;
-  double iti_duration_min;
-  double iti_duration_max;
-  int num_trial;
-};
-
-ExpParam expParam;
 bool currR1;
 bool currR2;
 bool prevR1;
 bool prevR2;
+bool prevBtn;
+bool currBtn;
+
+int selectedExp = 1;
+
+void displayMode()
+{
+  String outputArray[3];
+  if (selectedExp == 1)
+  {
+    outputArray[0] = expParam[selectedExp-1].name;
+    outputArray[1] = expParam[0].name;
+    outputArray[2] = expParam[1].name;
+  }
+  else if (selectedExp == numExp)
+  {
+    outputArray[0] = expParam[selectedExp-2].name;
+    outputArray[1] = expParam[selectedExp-1].name;
+    outputArray[2] = expParam[0].name;
+  }
+  else
+  {
+    outputArray[0] = expParam[selectedExp-2].name;
+    outputArray[1] = expParam[selectedExp-1].name;
+    outputArray[2] = expParam[selectedExp].name;
+  }
+  lcd->DispMode(outputArray);
+}
+
+void displayInfo()
+{
+  String outputArray[4];
+  outputArray[0] = String(expParam[selectedExp-1].habituation_time,0);
+  outputArray[1] = String(expParam[selectedExp-1].cs_duration,1);
+  outputArray[2] = String(expParam[selectedExp-1].us_onset,1);
+  outputArray[3] = String(expParam[selectedExp-1].iti_duration_min,0);
+  lcd->DispInfo(outputArray);
+}
+
 
 void loop() {
   /******************************************************/
   /*                  Select Experiment                 */
   /******************************************************/
+ // TODO randomSeed(millis()); 
   while(currentUI != UI_run_experiment)
   {
     currR1 = !digitalRead(PIN_BTN_R1);
     currR2 = !digitalRead(PIN_BTN_R2);
+    currBtn = !digitalRead(PIN_BTN_CLK);
+
+    // Check Rotation
     if(prevR1 == true && prevR2 == true)
     {
       if(currR1 == true && currR2 == false)
       {
-        val++;
+        // right rotation
+        if (currentUI == UI_select_experiment)
+        {
+          selectedExp++;
+          if (selectedExp > numExp) selectedExp = 1;
+          displayMode();
+        }
+        else // UI_show_experiment_outline
+        {
+          displayMode();
+          currentUI = UI_select_experiment;
+        }
       }
       else if (currR1 == false && currR2 == true)
       {
-        val--;
+        //left rotation
+        if (currentUI == UI_select_experiment)
+        {
+          selectedExp--;
+          if (selectedExp < 1) selectedExp = numExp;
+          displayMode();
+        }
+        else // UI_show_experiment_outline
+        {
+          displayMode();
+          currentUI = UI_select_experiment;
+        }
       }
     }
+
+    // Check Click
+    if (currBtn)
+    {
+      if (prevBtn == false)
+      {
+        if (currentUI == UI_select_experiment)
+        {
+          Serial.println("showing info");
+          displayInfo();
+          Serial.println("info shown");
+          currentUI = UI_show_experiment_outline;
+        }
+        else // UI_show_experiment_outline
+        {
+          currentUI = UI_run_experiment;
+        }
+      }
+    }
+
     prevR1 = currR1;
     prevR2 = currR2;
+    prevBtn = currBtn;
   }
-  /******************************************************/
-  /*             Experiment - Habituation               */
-  /******************************************************/
+  // /******************************************************/
+  // /*             Experiment - Habituation               */
+  // /******************************************************/
 
-  bool emergency_stop = false;
+  // bool emergency_stop = false;
 
-  long hab_onset_time_ms = millis();
+  // long hab_onset_time_ms = millis();
 
-  while((millis() - hab_onset_time_ms) < expParam.habituation_time*1000)
-  {
-    // emergency stop
-    if (Serial1.available() && (char(Serial1.read()) == 's'))
-    {
-      Serial1.println("Emergency Stop");
-      BT.write(letter_EXEnd);
-      emergency_stop = true;
-      break;
-    }
-  }
-  Serial1.println("Hab End");
+  // while((millis() - hab_onset_time_ms) < expParam.habituation_time*1000)
+  // {
+  //   // emergency stop
+  //   if (Serial1.available() && (char(Serial1.read()) == 's'))
+  //   {
+  //     Serial1.println("Emergency Stop");
+  //     BT.write(letter_EXEnd);
+  //     emergency_stop = true;
+  //     break;
+  //   }
+  // }
+  // Serial1.println("Hab End");
 //
 //  long trial_onset_time_ms;
 //  long time_from_trial_onset_ms;
