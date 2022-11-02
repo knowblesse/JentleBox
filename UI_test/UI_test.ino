@@ -11,6 +11,8 @@ void setup(){
   syui.DispCSOn("100");
   delay(2000);
   syui.DispWlcmImage();
+  String a[4] = {"20", "30", "40", "10"};
+  syui.DispInfo(a);
 }
 
 void loop(){}

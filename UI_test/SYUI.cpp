@@ -46,6 +46,7 @@ void SYUI::DispMode(String ModeList[3]) {
   screen.drawStr((128-Len0)/2, Hgt0 + Hgt + 5, ModeList[0].c_str());
   screen.drawButtonUTF8((128-Len1)/2, Hgt0 + 2*Hgt + 10, U8G2_BTN_INV, 0,  2,  2, ModeList[1].c_str());
   screen.drawStr((128-Len2)/2, Hgt0 + 3*Hgt + 15, ModeList[2].c_str());
+  screen.updateDisplay();
 }
 void SYUI::DispVal(){
   screen.clearDisplay();
@@ -62,6 +63,7 @@ void SYUI::DispVal(){
   screen.drawStr(2*HorSpace+Len0,VerSpace, "CS");
   screen.drawStr(3*HorSpace+Len0+Len1,VerSpace, "US");
   screen.drawStr(4*HorSpace+Len0+Len1+Len2,VerSpace, "ITI");
+  screen.updateDisplay();
 }
 void SYUI::DispInfo(String Variable[4]){
   screen.clearDisplay();
@@ -84,6 +86,7 @@ void SYUI::DispInfo(String Variable[4]){
   screen.drawStr(2*HorSpace+Len0+((Len1-Len5)/2),VerSpace+2*Hgt1, Variable[1].c_str());
   screen.drawStr(3*HorSpace+Len0+Len1+((Len2-Len6)/2),VerSpace+2*Hgt1, Variable[2].c_str());
   screen.drawStr(4*HorSpace+Len0+Len1+Len2+((Len3-Len7)/2),VerSpace+2*Hgt1, Variable[3].c_str());
+  screen.updateDisplay();
 }
 
 void SYUI::DispHabOn(char *HabTic){
