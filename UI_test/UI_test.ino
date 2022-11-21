@@ -8,14 +8,14 @@ void setup(){
   SYUI syui = SYUI(20, 18, 19);
   syui.DispWlcm();
   delay(2000);
-  syui.DispCSOn("100");
+  syui.DispCSOn("100", "3");
   delay(2000);
   syui.DispWlcmImage();
-  String a[4] = {"20", "30", "40", "10"};
+  String a[7] = {"20", "30", "29", "1", "100", "120", "5"};
+  delay(2000);
   syui.DispInfo(a);
+  delay(2000);
+  syui.DispITIOn("10", "2");
 }
 
 void loop(){}
-
-
-
