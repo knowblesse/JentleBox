@@ -12,11 +12,12 @@ class SYUI
     void DispWlcmImage();
     void DispMode(String ModeList[3]);
     void DispVal();
-    void DispInfo(String Variable[4]);
-    void DispHabOn(char *HabTic);
-    void DispCSOn(char *CSTic);
-    void DispUSOn(char *USTic);
-    void DispITIOn(char *ITITic);
+    void DispInfo(String Variable[7]);
+    void DispHabOn(char *HabTic, char *TrialNum);
+    void DispCSOn(char *CSTic, char *TrialNum);
+    void DispUSOn(char *USTic, char *TrialNum);
+    void DispITIOn(char *ITITic, char *TrialNum);
+    void DispTrial(char *TrialNum);
 };
 PROGMEM static unsigned char welcome[] = {
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -106,4 +107,3 @@ PROGMEM static unsigned char welcome[] = {
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
   0xff, 0xff, 0xff, 0xff };
 #endif
-
