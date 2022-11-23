@@ -8,9 +8,9 @@ AD8400::AD8400(int SPI_clock, int PIN_CS)
   this->PIN_CS = PIN_CS;
 }
 
-void AD8400::setVolume(int volume)
+void AD8400::setVolume(int volume)// volume = 1~ 62
 {
-  byte data = 255 - volumeList[volume-1];
+  byte data = volumeList[62-volume];
   SPI.beginTransaction(SPISettings(SPI_clock, MSBFIRST, SPI_MODE0));
   digitalWrite(PIN_CS, LOW);
   SPI.transfer(0);
