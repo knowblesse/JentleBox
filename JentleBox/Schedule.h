@@ -12,7 +12,8 @@ struct ExpParam
 
 int numExp = 5;
 ExpParam expParam[5];
-
+// 1. us_onset must be greater than 200ms
+// 2. if you don't want to present the US, set us_duration to 0. us_onset will be ignored.
 void initializeExpParam()
 {
   expParam[0].name = "Ji Hoon";

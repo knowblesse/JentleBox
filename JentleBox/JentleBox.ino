@@ -89,6 +89,7 @@ void setup() {
   ad9833.sendReset();
   ad9833.sendFrequency(freq);
   ad9833.sendControl();
+  ad9833.sendReset();
   varres.setVolume(0);
   static SYUI temp = SYUI(20, 18, 19);
   lcd = &temp;
@@ -99,6 +100,8 @@ void setup() {
   delay(2000);
   temp.DispWlcmImage();
   delay(2000);
+
+  displayMode();
 }
 
 void setOutputState(bool state)
@@ -120,7 +123,6 @@ void setOutputState(bool state)
 }
 
 // TODO retain the last selected experimentIndex
-int selectedExperimentIndex = 0;
 enum UIState
 {
   UI_select_experiment,
@@ -137,28 +139,28 @@ bool prevR2;
 bool prevBtn;
 bool currBtn;
 
-int selectedExp = 1;
+int selectedExp = 0;
 
 void displayMode()
 {
   String outputArray[3];
-  if (selectedExp == 1)
+  if (selectedExp == 0)
   {
-    outputArray[0] = expParam[selectedExp-1].name;
+    outputArray[0] = expParam[numExp-1].name;
     outputArray[1] = expParam[0].name;
     outputArray[2] = expParam[1].name;
   }
-  else if (selectedExp == numExp)
+  else if (selectedExp == numExp-1)
   {
-    outputArray[0] = expParam[selectedExp-2].name;
-    outputArray[1] = expParam[selectedExp-1].name;
+    outputArray[0] = expParam[numnExp-2].name;
+    outputArray[1] = expParam[numExp-1].name;
     outputArray[2] = expParam[0].name;
   }
   else
   {
-    outputArray[0] = expParam[selectedExp-2].name;
-    outputArray[1] = expParam[selectedExp-1].name;
-    outputArray[2] = expParam[selectedExp].name;
+    outputArray[0] = expParam[selectedExp-1].name;
+    outputArray[1] = expParam[selectedExp].name;
+    outputArray[2] = expParam[selectedExp+1].name;
   }
   lcd->DispMode(outputArray);
 }
@@ -172,6 +174,11 @@ void displayInfo()
   outputArray[3] = String(expParam[selectedExp-1].iti_duration_min,0);
   lcd->DispInfo(outputArray);
 }
+
+void setUSState(bool state)
+{
+}
+
 
 
 void loop() {
@@ -227,9 +234,7 @@ void loop() {
       {
         if (currentUI == UI_select_experiment)
         {
-          Serial.println("showing info");
           displayInfo();
-          Serial.println("info shown");
           currentUI = UI_show_experiment_outline;
         }
         else // UI_show_experiment_outline
@@ -243,197 +248,152 @@ void loop() {
     prevR2 = currR2;
     prevBtn = currBtn;
   }
-  // /******************************************************/
-  // /*             Experiment - Habituation               */
-  // /******************************************************/
 
-  // bool emergency_stop = false;
+  /******************************************************/
+  /*             Experiment - Habituation               */
+  /******************************************************/
 
-  // long hab_onset_time_ms = millis();
+  int numButtonClick = 0;
+  bool emergency_stop = false;
 
-  // while((millis() - hab_onset_time_ms) < expParam.habituation_time*1000)
-  // {
-  //   // emergency stop
-  //   if (Serial1.available() && (char(Serial1.read()) == 's'))
-  //   {
-  //     Serial1.println("Emergency Stop");
-  //     BT.write(letter_EXEnd);
-  //     emergency_stop = true;
-  //     break;
-  //   }
-  // }
-  // Serial1.println("Hab End");
-//
-//  long trial_onset_time_ms;
-//  long time_from_trial_onset_ms;
-//  long us_duration_ms;
-//  long iti_duration_ms;
-//
-//  bool isITI = false; 
-//  bool isCSOn = false;
-//  bool isUSArmed; // if true, US is present in this trial, but not yet executed
-//  bool isUSOn = false;
-//
-//  for(int curr_trial=1; curr_trial<= param.num_trial; curr_trial++)
-//  {
-//    if(emergency_stop) break;
-//    Serial1.println("+-------------------------------------------------+");
-//    Serial1.print("Trial : ");
-//    Serial1.print(curr_trial);
-//    
-//    // Setup Trial Variables
-//    us_duration_ms = random(param.us_duration_min*1000, param.us_duration_max*1000);
-//    iti_duration_ms = random(param.isi_duration_min*1000, param.isi_duration_max*1000);
-//
-//    // if cs_duration is more than zero, turn on the sound
-//    // if cs_duration is zero, then skip the CS presentation
-//    if(param.cs_duration > 0)
-//    {
-//      BT.write(letter_cson);
-//      Serial1.print(" CS ");
-//      Serial1.print(param.cs_duration,2);
-//      Serial1.print("s ");
-//      digitalWrite(PIN_TONE_GEN, HIGH);
-//      isCSOn = true;
-//    }
-//
-//    // if the Experiment Mode is Conditioning, US is armed
-//    // if the Experiment Mode is Extinction or Retention, US is not armed
-//    if (mode == CONDITIONING)
-//    {
-//      isUSArmed = true;
-//      Serial1.print("US ");
-//      Serial1.print(param.us_onset);
-//      Serial1.print("-");
-//      Serial1.print(us_duration_ms/1000,2);
-//      Serial1.println("s");
-//    }
-//    else
-//    {
-//      isUSArmed = false;
-//      Serial1.println("US X");
-//    }
-//
-//    trial_onset_time_ms = millis();
-//
-//    while(true)
-//    {
-//      time_from_trial_onset_ms = millis() - trial_onset_time_ms;
-//
-//      // check if cs_duration has reached
-//      if(isCSOn && (time_from_trial_onset_ms > param.cs_duration*1000))
-//      {
-//        BT.write(letter_csoff);
-//        digitalWrite(PIN_TONE_GEN, LOW);
-//        isCSOn = false;
-//      }
-//
-//      // if US is armed, check if us_onset has reached
-//      if(isUSArmed && (time_from_trial_onset_ms >= param.us_onset*1000))
-//      {
-//        if(random(0,100) < 50) motorForward();
-//        else motorBackward();
-//        isUSArmed = false;
-//        isUSOn = true;
-//      }
-//
-//      // if US is on, check if us_duration has reached
-//      if(isUSOn && (time_from_trial_onset_ms > (param.us_onset*1000 + us_duration_ms)))
-//      {
-//        motorStop();
-//        isUSOn = false;
-//      }
-//
-//      // if everything is finished during this trial, exit the while loop
-//      if(!isCSOn && !isUSArmed && !isUSOn) break;
-//
-//      // emergency stop
-//      if (Serial1.available() && (char(Serial1.read()) == 's'))
-//      {
-//        Serial1.println("Emergency Stop");
-//        BT.write(letter_EXEnd);
-//        emergency_stop = true;
-//        break;
-//      }
-//    }
-//
-//    Serial1.print("ITI start. Current ITI : ");
-//    Serial1.print(iti_duration_ms);
-//    Serial1.println(" ms");
-//    long iti_onset_time_ms = millis();
-//    while((millis() - iti_onset_time_ms) < iti_duration_ms)
-//    {
-//      // emergency stop
-//      if (Serial1.available() && (char(Serial1.read()) == 's'))
-//      {
-//        Serial1.println("Emergency Stop");
-//        BT.write(letter_EXEnd);
-//        emergency_stop = true;
-//        break;
-//      }
-//    }
-//    Serial1.println("ITI end");
-//  }
-//  Serial1.println("Experiment Done");
-//
-//  
-//
-//
-//
-//// +---------------------------------------------------------------------------------+
-//// |                                     CS On Off                                   |
-//// +---------------------------------------------------------------------------------+
-//  soundOn = !digitalRead(PIN_BTN_CLK) || !digitalRead(PIN_CS_TRIGGER);
-//  // If CS state is changed, set rampStatus to 0 (Not initiated)
-//  if(soundOn != prevSoundOn) rampStatus = 0;
-//  
-//  if(soundOn){ // If CS should be on, 
-//    if(rampStatus == 0){ // If this is the first loop of the ramp up, 
-//      // start ramping up
-//      Serial.println("Start Rampup");
-//      rampStartTime = millis();
-//      if (rampDuration == 0){ // If no rampup is set, just move to the loudest volume and finish rampup.
-//        rampStatus = 2;
-//        varres.setVolume(volume);
-//      }
-//      else { // If rampup is set, set rampStatus to 1 (under change) and set the lowest volume.
-//        rampStatus = 1;
-//        varres.setVolume(Min_volume);
-//      }
-//      ad9833.sendControl();
-//      setOutputState(true);
-//    }
-//    else if (rampStatus == 1) { // If currently under ramp up, 
-//      currentTime = millis() - rampStartTime; 
-//      if (currentTime < rampDuration){
-//        varres.setVolume(round(currentTime/(double)rampDuration*(volume - Min_volume))+Min_volume);
-//      }
-//      else rampStatus = 2;
-//    }
-//  } 
-//  else { // If CS should be off,
-//    if(rampStatus == 0){ // If this is the first loop of the ramp down
-//      // start ramping down
-//      Serial.println("Start Rampdown");
-//      rampStartTime = millis();
-//      if (rampDuration == 0){ // If no rampdown is set, just kill the DDS
-//        rampStatus = 2;
-//        ad9833.sendReset();
-//        setOutputState(false);
-//      }
-//      else rampStatus = 1; // If rampdown is set, set rampStatus to 1 (under change)
-//    }
-//    else if (rampStatus == 1) { // if currently under ramp down,
-//      currentTime = millis() - rampStartTime; 
-//      if (currentTime < rampDuration){
-//        varres.setVolume(volume - round(currentTime/(double)rampDuration*(volume - Min_volume)));
-//      }
-//      else {
-//        rampStatus = 2;
-//        ad9833.sendReset();
-//        setOutputState(false);
-//      }
-//    }
-//  }
-//  prevSoundOn = soundOn;
+  long hab_onset_time_ms = millis();
+
+  while((millis() - hab_onset_time_ms) < expParam[selectedExp].habituation_time*1000)
+  {
+    // if button is pressed more than three times, emergency stop
+    currBtn = !digitalRead(PIN_BTN_CLK);
+    if (currBtn == true && prevBtn == false)
+    {
+      numButtonClick++;
+    }
+
+    if (numButtonClick > 3)
+      emergency_stop = true;
+      break;
+    }
+    prevBtn = currBtn;
+  }
+
+  long trial_onset_time_ms;
+  long time_from_trial_onset_ms;
+ 
+  bool isITI = false; 
+  bool isCSOn = false;
+  bool isUSArmed; // if true, US is present in this trial, but not yet executed
+  bool isUSOn = false;
+ 
+  for(int curr_trial=1; curr_trial<= expParam[selectedExp].num_trial; curr_trial++)
+  {
+    if(emergency_stop) break;
+    // TODO show trial info
+    
+    // Setup Trial Variables
+
+    trial_onset_time_ms = millis();
+
+    //==========================Start CS Presentation========================== 
+    // if cs_duration is larger than zero, turn on the CS
+    if(expParam[selectedExp].cs_duration > 0)
+    {
+      unsigned long rampStartTime = millis();
+      unsigned long rampTime = 200;
+      unsigned long currentTime;
+      varres.setVolume(0);
+      ad9833.sendControl();
+      int maxVolume = 62;
+
+      while(true)
+      {
+        currentTime = millis();
+        varres.setVolume(\
+            min(maxVolume, \
+              round(maxVolume * (double)(currentTime - rampStartTime)/rampTime)\
+              )\
+            );
+        if (currentTime >= rampTime)
+        {
+          varres.setVolume(maxVolume);
+          break;
+        }
+      }
+      isCSOn = true;
+    }
+    
+    //=========================Prepare US Presentation========================= 
+    // if us_duration is larger than 0, US is armed
+    if (expParam[selectedExp].us_duration > 0) isUSArmed = true;
+    else isUSArmed = false;
+   
+    //=====================Simultaneously check CS and US====================== 
+    while(true)
+    {
+      time_from_trial_onset_ms = millis() - trial_onset_time_ms;
+ 
+      // check if cs_duration has reached
+      if(isCSOn && (time_from_trial_onset_ms > expParam[selectedExp].cs_duration*1000))
+      {
+        ad9833.sendReset();
+        isCSOn = false;
+      }
+ 
+      // if US is armed, check if us_onset has reached
+      if(isUSArmed && (time_from_trial_onset_ms >= expParam[selectedExp].us_onset*1000))
+      {
+        setUSState(true);
+        isUSArmed = false;
+        isUSOn = true;
+      }
+ 
+      // if US is on, check if us_duration has reached
+      if(isUSOn && (time_from_trial_onset_ms > (expParam[selectedExp].us_onset*1000 + expParam[selectedExp].us_duration*1000)))
+      {
+        setUsState(false);
+        isUSOn = false;
+      }
+ 
+      // if everything is finished during this trial, exit the while loop
+      if(!isCSOn && !isUSArmed && !isUSOn) break;
+ 
+      // if button is pressed more than three times, emergency stop
+      currBtn = !digitalRead(PIN_BTN_CLK);
+      if (currBtn == true && prevBtn == false)
+      {
+        numButtonClick++;
+      }
+
+      if (numButtonClick > 3)
+      {
+        emergency_stop = true;
+        // stop CS
+        ad9833.sendReset();
+        isCSOn = false;
+        // stop US
+        setUSState(false);
+        isUSArmed = false;
+        isUSOn = false;
+        break;
+      }
+    }
+    
+    // ITI Start Screen
+    long iti_onset_time_ms = millis();
+    unsigned long iti_duration_ms = random(expParam[selectedExp].isi_duration_min*1000, expParam[selectedExp].isi_duration_max*1000);
+    while((millis() - iti_onset_time_ms) < iti_duration_ms)
+    {
+      // if button is pressed more than three times, emergency stop
+      currBtn = !digitalRead(PIN_BTN_CLK);
+      if (currBtn == true && prevBtn == false)
+      {
+        numButtonClick++;
+      }
+
+      if (numButtonClick > 3)
+        emergency_stop = true;
+        break;
+      }
+      prevBtn = currBtn;
+    }
+    Serial1.println("ITI end");
+  }
+  Serial1.println("Experiment Done");
 }
