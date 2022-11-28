@@ -13,11 +13,11 @@ class SYUI
     void DispMode(String ModeList[3]);
     void DispVal();
     void DispInfo(String Variable[7]);
-    void DispHabOn(char *HabTic, char *TrialNum);
-    void DispCSOn(char *CSTic, char *TrialNum);
-    void DispUSOn(char *USTic, char *TrialNum);
-    void DispITIOn(char *ITITic, char *TrialNum);
-    void DispTrial(char *TrialNum);
+    void DispHabOn(const char *HabTic, const char *TrialNum);
+    void DispCSOn(const char *CSTic, const char *TrialNum);
+    void DispUSOn(const char *USTic, const char *TrialNum);
+    void DispITIOn(const char *ITITic, const char *TrialNum);
+    void DispTrial(const char *TrialNum);
 };
 PROGMEM static unsigned char welcome[] = {
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,

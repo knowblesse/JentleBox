@@ -111,7 +111,7 @@ void SYUI::DispInfo(String Variable[7]){
   screen.updateDisplay();
 }
 
-void SYUI::DispHabOn(char *HabTic, char *TrialNum){
+void SYUI::DispHabOn(const char *HabTic, const char *TrialNum){
   screen.clearDisplay();
   screen.setFont(u8g2_font_Born2bSportyV2_tr);
   int Len0 = screen.getStrWidth("Hab");
@@ -133,7 +133,7 @@ void SYUI::DispHabOn(char *HabTic, char *TrialNum){
   screen.updateDisplay();
 }
 
-void SYUI::DispCSOn(char *CSTic, char *TrialNum){
+void SYUI::DispCSOn(const char *CSTic, const char *TrialNum){
   screen.clearDisplay();
   screen.setFont(u8g2_font_Born2bSportyV2_tr);
   int Len0 = screen.getStrWidth("Hab");
@@ -153,7 +153,7 @@ void SYUI::DispCSOn(char *CSTic, char *TrialNum){
   screen.updateDisplay();
 }
 
-void SYUI::DispUSOn(char *USTic, char *TrialNum){
+void SYUI::DispUSOn(const char *USTic, const char *TrialNum){
   screen.clearDisplay();
   screen.setFont(u8g2_font_Born2bSportyV2_tr);
   int Len0 = screen.getStrWidth("Hab");
@@ -173,7 +173,7 @@ void SYUI::DispUSOn(char *USTic, char *TrialNum){
   screen.updateDisplay();
 }
     
-void SYUI::DispITIOn(char *ITITic, char *TrialNum){
+void SYUI::DispITIOn(const char *ITITic, const char *TrialNum){
   screen.clearDisplay();
   screen.setFont(u8g2_font_Born2bSportyV2_tr);
   int Len0 = screen.getStrWidth("Hab");
@@ -195,7 +195,7 @@ void SYUI::DispITIOn(char *ITITic, char *TrialNum){
   screen.updateDisplay();
 }
 
-void SYUI::DispTrial(char *TrialNum){
+void SYUI::DispTrial(const char *TrialNum){
   screen.clearDisplay();
   screen.setFont(u8g2_font_Born2bSportyV2_tr);
   int Len0 = screen.getStrWidth("Hab");

@@ -35,28 +35,93 @@ bool manualSoundOn = false;
 bool prevSoundOn = false;
 
 int freq = 2000;
-int volume = 140;
-unsigned long rampDuration = 100;
-
-// Min Max Value
-int Max_volume = 150;
-int Min_volume = 1;
-int Chn_volume = 1;
-int Max_rampUp = 500;
-int Min_rampUp = 0;
-int Chn_rampUp = 100;
-
-// RampUp Values
-int rampStatus = 2; // 0 : Not Initiated, 1 : Under Rampup, 2 : Done
-unsigned long rampStartTime; // time when the rampUp started. 
-unsigned long currentTime;
-
-int mode = 0; // 0:Freq, 1:volume, 2:Ramp Up, 3:Manual 
+unsigned long rampTime = 200;
+int maxVolume = 60;
 
 SYUI *lcd;
 AD9833 ad9833 = AD9833(400000, PIN_DDS_CS);
 VarRes varres = VarRes(400000, PIN_RESISTOR_CS);
 
+// +---------------------------------------------------------------------------------+
+// |                              UI Macro functions                                 |
+// +---------------------------------------------------------------------------------+
+
+int selectedExp = 0;
+
+void displayMode()
+{
+  String outputArray[3];
+  if (selectedExp == 0)
+  {
+    outputArray[0] = expParam[numExp-1].name;
+    outputArray[1] = expParam[0].name;
+    outputArray[2] = expParam[1].name;
+  }
+  else if (selectedExp == numExp-1)
+  {
+    outputArray[0] = expParam[numExp-2].name;
+    outputArray[1] = expParam[numExp-1].name;
+    outputArray[2] = expParam[0].name;
+  }
+  else
+  {
+    outputArray[0] = expParam[selectedExp-1].name;
+    outputArray[1] = expParam[selectedExp].name;
+    outputArray[2] = expParam[selectedExp+1].name;
+  }
+  lcd->DispMode(outputArray);
+}
+
+void displayInfo()
+{
+  String outputArray[7];
+  outputArray[0] = String(expParam[selectedExp].habituation_time,0);
+  outputArray[1] = String(expParam[selectedExp].cs_duration,1);
+  outputArray[2] = String(expParam[selectedExp].us_onset,1);
+  outputArray[3] = String(expParam[selectedExp].us_duration,1);
+  outputArray[4] = String(expParam[selectedExp].iti_duration_min,0);
+  outputArray[5] = String(expParam[selectedExp].iti_duration_max,0);
+  outputArray[6] = String(expParam[selectedExp].num_trial,0);
+  lcd->DispInfo(outputArray);
+}
+
+// +---------------------------------------------------------------------------------+
+// |                                Macro functions                                  |
+// +---------------------------------------------------------------------------------+
+void setOutputState(bool state)
+{
+  if(state)
+  {
+    digitalWrite(PIN_IO_TERMINAL1, HIGH);
+    digitalWrite(PIN_IO_TERMINAL2, HIGH);
+    digitalWrite(PIN_IO_TERMINAL3, HIGH);
+    digitalWrite(PIN_IO_TERMINAL4, HIGH);  
+  }
+  else
+  {
+    digitalWrite(PIN_IO_TERMINAL1, LOW);
+    digitalWrite(PIN_IO_TERMINAL2, LOW);
+    digitalWrite(PIN_IO_TERMINAL3, LOW);
+    digitalWrite(PIN_IO_TERMINAL4, LOW);
+  }
+}
+
+enum UIState
+{
+  UI_select_experiment,
+  UI_show_experiment_outline,
+  UI_run_experiment
+};
+  
+void setUSState(bool state)
+{
+  digitalWrite(PIN_IO_TERMINAL1, state);
+}
+
+
+// +---------------------------------------------------------------------------------+
+// |                                 Main functions                                  |
+// +---------------------------------------------------------------------------------+
 void setup() {
   
   // Initialize Pins
@@ -104,33 +169,9 @@ void setup() {
   displayMode();
 }
 
-void setOutputState(bool state)
-{
-  if(state)
-  {
-    digitalWrite(PIN_IO_TERMINAL1, HIGH);
-    digitalWrite(PIN_IO_TERMINAL2, HIGH);
-    digitalWrite(PIN_IO_TERMINAL3, HIGH);
-    digitalWrite(PIN_IO_TERMINAL4, HIGH);  
-  }
-  else
-  {
-    digitalWrite(PIN_IO_TERMINAL1, LOW);
-    digitalWrite(PIN_IO_TERMINAL2, LOW);
-    digitalWrite(PIN_IO_TERMINAL3, LOW);
-    digitalWrite(PIN_IO_TERMINAL4, LOW);
-  }
-}
-
-// TODO retain the last selected experimentIndex
-enum UIState
-{
-  UI_select_experiment,
-  UI_show_experiment_outline,
-  UI_run_experiment
-};
-  
 int currentUI = UI_select_experiment;
+unsigned long currentTime;
+unsigned long lastRefreshTime = 0;
 
 bool currR1;
 bool currR2;
@@ -139,53 +180,11 @@ bool prevR2;
 bool prevBtn;
 bool currBtn;
 
-int selectedExp = 0;
-
-void displayMode()
-{
-  String outputArray[3];
-  if (selectedExp == 0)
-  {
-    outputArray[0] = expParam[numExp-1].name;
-    outputArray[1] = expParam[0].name;
-    outputArray[2] = expParam[1].name;
-  }
-  else if (selectedExp == numExp-1)
-  {
-    outputArray[0] = expParam[numnExp-2].name;
-    outputArray[1] = expParam[numExp-1].name;
-    outputArray[2] = expParam[0].name;
-  }
-  else
-  {
-    outputArray[0] = expParam[selectedExp-1].name;
-    outputArray[1] = expParam[selectedExp].name;
-    outputArray[2] = expParam[selectedExp+1].name;
-  }
-  lcd->DispMode(outputArray);
-}
-
-void displayInfo()
-{
-  String outputArray[4];
-  outputArray[0] = String(expParam[selectedExp-1].habituation_time,0);
-  outputArray[1] = String(expParam[selectedExp-1].cs_duration,1);
-  outputArray[2] = String(expParam[selectedExp-1].us_onset,1);
-  outputArray[3] = String(expParam[selectedExp-1].iti_duration_min,0);
-  lcd->DispInfo(outputArray);
-}
-
-void setUSState(bool state)
-{
-}
-
-
-
 void loop() {
   /******************************************************/
   /*                  Select Experiment                 */
   /******************************************************/
- // TODO randomSeed(millis()); 
+
   while(currentUI != UI_run_experiment)
   {
     currR1 = !digitalRead(PIN_BTN_R1);
@@ -201,7 +200,7 @@ void loop() {
         if (currentUI == UI_select_experiment)
         {
           selectedExp++;
-          if (selectedExp > numExp) selectedExp = 1;
+          if (selectedExp > numExp-1) selectedExp = 0;
           displayMode();
         }
         else // UI_show_experiment_outline
@@ -216,7 +215,7 @@ void loop() {
         if (currentUI == UI_select_experiment)
         {
           selectedExp--;
-          if (selectedExp < 1) selectedExp = numExp;
+          if (selectedExp < 0) selectedExp = numExp-1;
           displayMode();
         }
         else // UI_show_experiment_outline
@@ -232,6 +231,7 @@ void loop() {
     {
       if (prevBtn == false)
       {
+        randomSeed(millis()); 
         if (currentUI == UI_select_experiment)
         {
           displayInfo();
@@ -258,8 +258,23 @@ void loop() {
 
   long hab_onset_time_ms = millis();
 
-  while((millis() - hab_onset_time_ms) < expParam[selectedExp].habituation_time*1000)
+  while(true)
   {
+    currentTime = millis();
+    // check refresh
+    if ((currentTime - lastRefreshTime) > 500)
+    {
+      
+      lcd->DispHabOn(String(round((currentTime-hab_onset_time_ms)/1000),0).c_str(), "0");
+      lastRefreshTime = currentTime;
+    }
+
+    // check time out
+    if ((currentTime - hab_onset_time_ms) > expParam[selectedExp].habituation_time*1000)
+    {
+      break;
+    }
+
     // if button is pressed more than three times, emergency stop
     currBtn = !digitalRead(PIN_BTN_CLK);
     if (currBtn == true && prevBtn == false)
@@ -268,7 +283,9 @@ void loop() {
     }
 
     if (numButtonClick > 3)
+    {
       emergency_stop = true;
+      currentUI = UI_select_experiment;
       break;
     }
     prevBtn = currBtn;
@@ -295,9 +312,7 @@ void loop() {
     // if cs_duration is larger than zero, turn on the CS
     if(expParam[selectedExp].cs_duration > 0)
     {
-      unsigned long rampStartTime = millis();
-      unsigned long rampTime = 200;
-      unsigned long currentTime;
+      
       varres.setVolume(0);
       ad9833.sendControl();
       int maxVolume = 62;
@@ -307,7 +322,7 @@ void loop() {
         currentTime = millis();
         varres.setVolume(\
             min(maxVolume, \
-              round(maxVolume * (double)(currentTime - rampStartTime)/rampTime)\
+              round(maxVolume * (double)(currentTime - trial_onset_time_ms)/rampTime)\
               )\
             );
         if (currentTime >= rampTime)
@@ -328,6 +343,11 @@ void loop() {
     while(true)
     {
       time_from_trial_onset_ms = millis() - trial_onset_time_ms;
+      if ((time_from_trial_onset_ms - lastRefreshTime) > 500)
+      {
+        lcd->DispCSOn(String(round(time_from_trial_onset_ms/1000),0).c_str(), String(curr_trial).c_str());
+        lastRefreshTime = time_from_trial_onset_ms;
+      }
  
       // check if cs_duration has reached
       if(isCSOn && (time_from_trial_onset_ms > expParam[selectedExp].cs_duration*1000))
@@ -347,7 +367,7 @@ void loop() {
       // if US is on, check if us_duration has reached
       if(isUSOn && (time_from_trial_onset_ms > (expParam[selectedExp].us_onset*1000 + expParam[selectedExp].us_duration*1000)))
       {
-        setUsState(false);
+        setUSState(false);
         isUSOn = false;
       }
  
@@ -364,6 +384,7 @@ void loop() {
       if (numButtonClick > 3)
       {
         emergency_stop = true;
+        currentUI = UI_select_experiment;
         // stop CS
         ad9833.sendReset();
         isCSOn = false;
@@ -377,9 +398,24 @@ void loop() {
     
     // ITI Start Screen
     long iti_onset_time_ms = millis();
-    unsigned long iti_duration_ms = random(expParam[selectedExp].isi_duration_min*1000, expParam[selectedExp].isi_duration_max*1000);
-    while((millis() - iti_onset_time_ms) < iti_duration_ms)
+    unsigned long iti_duration_ms = random(expParam[selectedExp].iti_duration_min*1000, expParam[selectedExp].iti_duration_max*1000);
+    while(true)
     {
+      currentTime = millis();
+
+      // check refresh
+      if ((currentTime - lastRefreshTime) > 500)
+      {
+        lcd->DispITIOn(String(round((currentTime-iti_onset_time_ms)/1000),0).c_str(), String(curr_trial).c_str());
+        lastRefreshTime = currentTime;
+      }
+
+      // check time out
+      if ((currentTime - iti_onset_time_ms) > iti_duration_ms)
+      {
+        break;
+      }
+
       // if button is pressed more than three times, emergency stop
       currBtn = !digitalRead(PIN_BTN_CLK);
       if (currBtn == true && prevBtn == false)
@@ -388,12 +424,12 @@ void loop() {
       }
 
       if (numButtonClick > 3)
+      {
         emergency_stop = true;
+        currentUI = UI_select_experiment;
         break;
       }
       prevBtn = currBtn;
     }
-    Serial1.println("ITI end");
   }
-  Serial1.println("Experiment Done");
 }
