@@ -3,15 +3,16 @@
 #define PIN_RESET 19
 #define PIN_CHIP_SELECT 20
 
-
 void setup(){
   SYUI syui = SYUI(20, 18, 19);
+ 
   syui.DispWlcm();
   delay(2000);
-  syui.DispCSOn("100", "3");
+  syui.Val();
+  syui.DispCSUS("100","0", "3");
   delay(2000);
   syui.DispWlcmImage();
-  String a[7] = {"20", "30", "29", "1", "100", "120", "5"};
+  String a[7] = {"120", "30", "1.0", "10.0", "60", "60", "1"};
   delay(2000);
   syui.DispInfo(a);
   delay(2000);

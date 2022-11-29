@@ -47,7 +47,6 @@ VarRes varres = VarRes(400000, PIN_RESISTOR_CS);
 // +---------------------------------------------------------------------------------+
 
 int selectedExp = 0;
-
 void displayMode()
 {
   String outputArray[3];

@@ -8,14 +8,14 @@ class SYUI
     U8G2_ST7565_NHD_C12864_F_4W_HW_SPI screen;
   public:
     SYUI(int PIN_LCD_CS, int PIN_LCD_A0, int PIN_LCD_RESET);
+    void Val();
     void DispWlcm();
     void DispWlcmImage();
     void DispMode(String ModeList[3]);
     void DispVal();
     void DispInfo(String Variable[7]);
     void DispHabOn(const char *HabTic, const char *TrialNum);
-    void DispCSOn(const char *CSTic, const char *TrialNum);
-    void DispUSOn(const char *USTic, const char *TrialNum);
+    void DispCSUS(const char *CSTic, const char *USTic, const char *TrialNum);
     void DispITIOn(const char *ITITic, const char *TrialNum);
     void DispTrial(const char *TrialNum);
 };
