@@ -23,8 +23,9 @@ class VarRes
   
   public:
     VarRes(int SPI_clock, int PIN_CS);
-    void setVolume(int volume);
+    void setVolume(int volume); // this function uses volume table
     void setData(int data);
+    void setVolumeRaw(int volume); // this function uses raw value.
 };
 
 #endif

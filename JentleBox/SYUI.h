@@ -8,9 +8,9 @@ class SYUI
     U8G2_ST7565_NHD_C12864_F_4W_HW_SPI screen;
   public:
     SYUI(int PIN_LCD_CS, int PIN_LCD_A0, int PIN_LCD_RESET);
-    void Val();
-    void DispWlcm();
-    void DispWlcmImage();
+    void Val(); // Set Screen Params. included in the constructor.
+    void DispWlcm(); // Welcome Message
+    void DispWlcmImage(); // Welcome Image
     void DispMode(String ModeList[3]);
     void DispVal();
     void DispInfo(String Variable[7]);

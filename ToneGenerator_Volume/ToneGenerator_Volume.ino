@@ -51,7 +51,7 @@ unsigned long changeStartTime;
 unsigned long currentTime;
 
 void loop() {
-  currInputState = (!digitalRead(PIN_BTN) || !digitalRead(PIN_CS_ON));
+  currInputState = (!digitalRead(PIN_BTN) || digitalRead(PIN_CS_ON));
 
   if(currInputState != prevInputState) rampStatus = RAMP_READY;
   if(currInputState) // CS ON

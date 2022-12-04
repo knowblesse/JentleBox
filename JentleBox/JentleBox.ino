@@ -18,15 +18,15 @@
 #define PIN_IO_TERMINAL4 5
 #define PIN_BTN_CLK 6
 #define PIN_CS_TRIGGER 7 // digital input signal for external cs on trigger
-#define PIN_CS_ENABLE 8  // Not used
+#define PIN_CS_ENABLE 8
 #define PIN_BTN_R1 9
 #define PIN_BTN_R2 10
 #define PIN_RESISTOR_CS 16
 #define PIN_DDS_CS 3
-#define PIN_LCD_A0 18
-#define PIN_LCD_RESET 19
+#define PIN_LCD_A0 14
+#define PIN_LCD_RESET 15
 #define PIN_LCD_CS 20
-#define PIN_LCD_LED 21 // Not used
+#define PIN_LCD_LED 21
 
 // Setting Value
 bool isSetMode = false;
@@ -35,8 +35,8 @@ bool manualSoundOn = false;
 bool prevSoundOn = false;
 
 int freq = 2000;
-unsigned long rampTime = 200;
-int maxVolume = 60;
+unsigned long rampTime = 100;
+int maxVolume = 100;
 
 SYUI *lcd;
 AD9833 ad9833 = AD9833(400000, PIN_DDS_CS);
@@ -129,11 +129,13 @@ void setup() {
   pinMode(PIN_IO_TERMINAL3, OUTPUT);
   pinMode(PIN_IO_TERMINAL4, OUTPUT);
   pinMode(PIN_BTN_CLK, INPUT_PULLUP);
+  pinMode(PIN_CS_ENABLE, OUTPUT);
   pinMode(PIN_CS_TRIGGER, INPUT_PULLUP);
   pinMode(PIN_BTN_R1, INPUT_PULLUP);
   pinMode(PIN_BTN_R2, INPUT_PULLUP);
   pinMode(PIN_RESISTOR_CS, OUTPUT);
   pinMode(PIN_DDS_CS, OUTPUT);
+  pinMode(PIN_LCD_LED, OUTPUT);
 
   Serial.begin(9600);
   
@@ -145,6 +147,8 @@ void setup() {
   digitalWrite(PIN_IO_TERMINAL3, LOW);
   digitalWrite(PIN_IO_TERMINAL4, LOW);
 
+  digitalWrite(PIN_CS_ENABLE, LOW);
+
   digitalWrite(PIN_RESISTOR_CS, HIGH);
 
   digitalWrite(PIN_DDS_CS, HIGH);
@@ -154,14 +158,24 @@ void setup() {
   ad9833.sendFrequency(freq);
   ad9833.sendControl();
   ad9833.sendReset();
-  varres.setVolume(0);
-  static SYUI temp = SYUI(20, 18, 19);
+  varres.setVolumeRaw(0);
+  static SYUI temp = SYUI(PIN_LCD_CS, PIN_LCD_A0, PIN_LCD_RESET);
   lcd = &temp;
   initializeExpParam();
 
-  // Show Screen
+  // Show Welcome Screen
   temp.DispWlcm();
-  delay(2000);
+  
+  // Play tone for 500ms
+  digitalWrite(PIN_CS_ENABLE, HIGH);
+  ad9833.sendControl();
+  delay(500);
+  ad9833.sendReset();
+  digitalWrite(PIN_CS_ENABLE, LOW);
+  delay(1500);
+
+  // Turn on the display and Show the welcome image
+  digitalWrite(PIN_LCD_LED, HIGH);
   temp.DispWlcmImage();
   delay(2000);
 
@@ -301,32 +315,29 @@ void loop() {
   for(int curr_trial=1; curr_trial<= expParam[selectedExp].num_trial; curr_trial++)
   {
     if(emergency_stop) break;
-    // TODO show trial info
     
     // Setup Trial Variables
-
     trial_onset_time_ms = millis();
 
     //==========================Start CS Presentation========================== 
     // if cs_duration is larger than zero, turn on the CS
     if(expParam[selectedExp].cs_duration > 0)
     {
-      
-      varres.setVolume(0);
+      digitalWrite(PIN_CS_ENABLE, HIGH);
+      varres.setVolumeRaw(0);
       ad9833.sendControl();
-      int maxVolume = 62;
 
       while(true)
       {
         currentTime = millis();
-        varres.setVolume(\
+        varres.setVolumeRaw(\
             min(maxVolume, \
               round(maxVolume * (double)(currentTime - trial_onset_time_ms)/rampTime)\
               )\
             );
         if (currentTime >= rampTime)
         {
-          varres.setVolume(maxVolume);
+          varres.setVolumeRaw(maxVolume);
           break;
         }
       }
@@ -344,7 +355,7 @@ void loop() {
       time_from_trial_onset_ms = millis() - trial_onset_time_ms;
       if ((time_from_trial_onset_ms - lastRefreshTime) > 500)
       {
-        lcd->DispCSOn(String(round(time_from_trial_onset_ms/1000),0).c_str(), String(curr_trial).c_str());
+        lcd->DispCSUS(String(round(time_from_trial_onset_ms/1000),0).c_str(), "0", String(curr_trial).c_str());
         lastRefreshTime = time_from_trial_onset_ms;
       }
  
@@ -352,6 +363,7 @@ void loop() {
       if(isCSOn && (time_from_trial_onset_ms > expParam[selectedExp].cs_duration*1000))
       {
         ad9833.sendReset();
+        digitalWrite(PIN_CS_ENABLE, LOW);
         isCSOn = false;
       }
  

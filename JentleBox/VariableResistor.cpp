@@ -36,3 +36,13 @@ void VarRes::setData(int data)
   digitalWrite(PIN_CS, HIGH);
   SPI.endTransaction();
 }
+void VarRes::setVolumeRaw(int volume)
+{
+  byte data = 225 - (byte)volume; // bigger = smaller volume. 
+  SPI.beginTransaction(SPISettings(SPI_clock, MSBFIRST, SPI_MODE0));
+  digitalWrite(PIN_CS, LOW);
+  SPI.transfer(0);
+  SPI.transfer(data);
+  digitalWrite(PIN_CS, HIGH);
+  SPI.endTransaction();
+}

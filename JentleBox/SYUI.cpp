@@ -13,6 +13,7 @@ SYUI::SYUI(int PIN_LCD_CS, int PIN_LCD_A0, int PIN_LCD_RESET) : screen(U8G2_R2, 
   screen.begin();
   screen.clearDisplay();
   screen.setContrast(100);
+  Val();
 }
 
 int LenHab;
@@ -27,16 +28,16 @@ int VerSpace;
 
 void SYUI::Val(){
   screen.setFont(u8g2_font_Born2bSportyV2_tr);
-  int LenHab = screen.getStrWidth("Hab");
-  int LenCs = screen.getStrWidth("CS");
-  int LenUs = screen.getStrWidth("US");
-  int LenIti = screen.getStrWidth("ITI");
-  int LenTri = screen.getStrWidth("Trial");
-  int HgtVal = screen.getAscent()-screen.getDescent();
-  int HorSpace = (128-(LenHab+LenCs+LenUs+LenIti+LenTri))/6;
-  int VerSpace = (64-3*HgtVal)/2+HgtVal;  
+  LenHab = screen.getStrWidth("Hab");
+  LenCs = screen.getStrWidth("CS");
+  LenUs = screen.getStrWidth("US");
+  LenIti = screen.getStrWidth("ITI");
+  LenTri = screen.getStrWidth("Trial");
+  HgtVal = screen.getAscent()-screen.getDescent();
+  HorSpace = (128-(LenHab+LenCs+LenUs+LenIti+LenTri))/6;
+  VerSpace = (64-3*HgtVal)/2+HgtVal;  
   screen.setFont(u8g2_font_6x12_tr);
-  int HgtNum = screen.getAscent()-screen.getDescent();
+  HgtNum = screen.getAscent()-screen.getDescent();
 }
 
 void SYUI::DispWlcm() {
