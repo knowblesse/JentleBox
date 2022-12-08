@@ -3,135 +3,85 @@
  */
 #include <SPI.h>
 #include "AD9833.h"
-#include "AD8400.h"
+#include "VariableResistor.h"
 
-#define PIN_DDS_CS 17 // Tone Gene 3, Jentle 17
-#define PIN_VARIABLE_REGISTOR 16 // Tone Gen 10 Jentle 16
-#define PIN_BTN 6
-#define PIN_CS_ON 8
+#define PIN_IO_TERMINAL1 2
+#define PIN_IO_TERMINAL2 3
+#define PIN_IO_TERMINAL3 4
+#define PIN_IO_TERMINAL4 5
+#define PIN_BTN_CLK 6
+#define PIN_CS_TRIGGER 7 // digital input signal for external cs on trigger
+#define PIN_CS_ENABLE 8
+#define PIN_BTN_R1 9
+#define PIN_BTN_R2 10
+#define PIN_RESISTOR_CS 16
+#define PIN_DDS_CS 17
+#define PIN_LCD_A0 14
+#define PIN_LCD_RESET 15
+#define PIN_LCD_CS 20
+#define PIN_LCD_LED 21
+
 #define RAMP_TIME 500
-#define MAX_VOLUME 62
-#define MIN_VOLUME 1
 
 AD9833 ad9833 = AD9833(400000, PIN_DDS_CS);
-AD8400 varReg = AD8400(400000, PIN_VARIABLE_REGISTOR);
+VarRes varres = VarRes(400000, PIN_RESISTOR_CS);
 
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println("Started");
-  
+  // Initialize Pins
+  pinMode(PIN_IO_TERMINAL1, OUTPUT);
+  pinMode(PIN_IO_TERMINAL2, OUTPUT);
+  pinMode(PIN_IO_TERMINAL3, OUTPUT);
+  pinMode(PIN_IO_TERMINAL4, OUTPUT);
+  pinMode(PIN_BTN_CLK, INPUT_PULLUP);
+  pinMode(PIN_CS_ENABLE, OUTPUT);
+  pinMode(PIN_CS_TRIGGER, INPUT_PULLUP);
+  pinMode(PIN_BTN_R1, INPUT_PULLUP);
+  pinMode(PIN_BTN_R2, INPUT_PULLUP);
+  pinMode(PIN_RESISTOR_CS, OUTPUT);
   pinMode(PIN_DDS_CS, OUTPUT);
-  digitalWrite(PIN_DDS_CS, HIGH);
+  pinMode(PIN_LCD_LED, OUTPUT);
 
-  pinMode(PIN_VARIABLE_REGISTOR, OUTPUT);
-  digitalWrite(PIN_VARIABLE_REGISTOR, HIGH);
-
-  pinMode(PIN_BTN, INPUT_PULLUP);
-  pinMode(PIN_CS_ON, INPUT_PULLUP);
-
+  Serial.begin(9600);
+  
   SPI.begin();
 
-   while (millis() < 2000){};
+  // Initialize output pins
+  digitalWrite(PIN_IO_TERMINAL1, LOW);
+  digitalWrite(PIN_IO_TERMINAL2, LOW);
+  digitalWrite(PIN_IO_TERMINAL3, LOW);
+  digitalWrite(PIN_IO_TERMINAL4, LOW);
+
+  digitalWrite(PIN_CS_ENABLE, LOW);
+
+  digitalWrite(PIN_RESISTOR_CS, HIGH);
+
+  digitalWrite(PIN_DDS_CS, HIGH);
+
+  // Load Default Settings
   ad9833.sendReset();
   ad9833.sendFrequency(2000);
+  ad9833.sendControl();
+  ad9833.sendReset();
+  varres.setVolume(0);
 }
-bool prevInputState = false;
-bool currInputState;
-
-// Ramp Parameters
-enum RAMP
-{
-  RAMP_READY,
-  RAMP,
-  RAMP_DONE
-};
-int rampStatus = RAMP_DONE;
-unsigned long changeStartTime;
-unsigned long currentTime;
 
 void loop() {
-  currInputState = (!digitalRead(PIN_BTN) || digitalRead(PIN_CS_ON));
-
-  if(currInputState != prevInputState) rampStatus = RAMP_READY;
-  if(currInputState) // CS ON
+  if(Serial.available())
   {
-    /*******************************************************************/
-    /*                          Start Ramp Up                          */
-    /*******************************************************************/
-    if(rampStatus == RAMP_READY)
+    int vol = Serial.parseInt();
+    Serial.print("Volume : ");
+    Serial.println(vol);
+    if(vol == 0)
     {
-      changeStartTime = millis();
-      // If RAMP_TIME is not set, use the maximum volume
-      if(RAMP_TIME == 0)
-      {
-        rampStatus = RAMP_DONE;
-        varReg.setVolume(MAX_VOLUME);
-      }
-      else // If RAMP_TIME is set, start with smallest volume
-      {
-        rampStatus = RAMP;
-        varReg.setVolume(MIN_VOLUME);
-      }
-      // Start Generating Output
+      ad9833.sendReset();
+      digitalWrite(PIN_CS_ENABLE, LOW);
+    }
+    else
+    {
+      varres.setVolume(vol);
       ad9833.sendControl();
+      digitalWrite(PIN_CS_ENABLE, HIGH);
     }
-    /*******************************************************************/
-    /*                         Already under ramp                      */
-    /*******************************************************************/
-    else if(rampStatus == RAMP)
-    {
-      currentTime = millis() - changeStartTime;
-      if(currentTime < RAMP_TIME)
-      {
-        varReg.setVolume(round(currentTime/(double)RAMP_TIME*(MAX_VOLUME-MIN_VOLUME) + MIN_VOLUME));
-        Serial.println(round(currentTime/(double)RAMP_TIME*(MAX_VOLUME-MIN_VOLUME) + MIN_VOLUME));
-      }
-      else
-      {
-        rampStatus = RAMP_DONE;
-        varReg.setVolume(MAX_VOLUME);
-      }
-    }
-  }
-  else
-  {
-    /*******************************************************************/
-    /*                          Start Ramp Down                        */
-    /*******************************************************************/
-    if(rampStatus == RAMP_READY)
-    {
-      changeStartTime = millis();
-      // If RAMP_TIME is not set, set volume to minimum (for the next tone) and disable output
-      if(RAMP_TIME == 0)
-      {
-        rampStatus = RAMP_DONE;
-        varReg.setVolume(MIN_VOLUME);
-        ad9833.sendReset();
-      }
-      else // If RAMP_TIME is set, do nothing (as it the volume is already set as the maximum)
-      {
-        rampStatus = RAMP;
-        //varReg.setVolume(MAX_VOLUME); // this line is unnecessary 
-      }
-    }
-    /*******************************************************************/
-    /*                         Already under ramp                      */
-    /*******************************************************************/
-    else if(rampStatus == RAMP)
-    {
-      currentTime = millis() - changeStartTime;
-      if(currentTime < RAMP_TIME)
-      {
-        varReg.setVolume(MAX_VOLUME - round(currentTime/(double)RAMP_TIME*(MAX_VOLUME-MIN_VOLUME)));
-      }
-      else
-      {
-        rampStatus = RAMP_DONE;
-        varReg.setVolume(MIN_VOLUME);
-        ad9833.sendReset();
-      }
-    }
-  }
-  prevInputState = currInputState;
+  }  
 }

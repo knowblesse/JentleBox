@@ -53,10 +53,10 @@ void initializeExpParam()
   expParam[3].num_trial = 15;
 
   expParam[4].name = "Debug";
-  expParam[4].habituation_time = 10;
+  expParam[4].habituation_time = 5;
   expParam[4].cs_duration = 10;
-  expParam[4].us_onset = 8;
-  expParam[4].us_duration = 2;
+  expParam[4].us_onset = 5;
+  expParam[4].us_duration = 5;
   expParam[4].iti_duration_min = 5;
   expParam[4].iti_duration_max = 5;
   expParam[4].num_trial = 30;

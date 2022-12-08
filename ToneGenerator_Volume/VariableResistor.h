@@ -10,7 +10,6 @@ class VarRes
     VarRes(int SPI_clock, int PIN_CS);
     void setVolume(int volume); 
     void setData(int data);
-    void setVolumeRaw(int volume); // this function uses raw value.
 };
 
 #endif

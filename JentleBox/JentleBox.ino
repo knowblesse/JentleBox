@@ -13,7 +13,7 @@
 // |                             Digial Pin Configuration                            |
 // +---------------------------------------------------------------------------------+
 #define PIN_IO_TERMINAL1 2
-#define PIN_IO_TERMINAL2 13
+#define PIN_IO_TERMINAL2 3
 #define PIN_IO_TERMINAL3 4
 #define PIN_IO_TERMINAL4 5
 #define PIN_BTN_CLK 6
@@ -22,7 +22,7 @@
 #define PIN_BTN_R1 9
 #define PIN_BTN_R2 10
 #define PIN_RESISTOR_CS 16
-#define PIN_DDS_CS 3
+#define PIN_DDS_CS 17
 #define PIN_LCD_A0 14
 #define PIN_LCD_RESET 15
 #define PIN_LCD_CS 20
@@ -158,21 +158,21 @@ void setup() {
   ad9833.sendFrequency(freq);
   ad9833.sendControl();
   ad9833.sendReset();
-  varres.setVolumeRaw(0);
+  varres.setVolume(0);
   static SYUI temp = SYUI(PIN_LCD_CS, PIN_LCD_A0, PIN_LCD_RESET);
   lcd = &temp;
   initializeExpParam();
 
   // Show Welcome Screen
   temp.DispWlcm();
-  
+  delay(2000);
   // Play tone for 500ms
   digitalWrite(PIN_CS_ENABLE, HIGH);
   ad9833.sendControl();
   delay(500);
   ad9833.sendReset();
   digitalWrite(PIN_CS_ENABLE, LOW);
-  delay(1500);
+  delay(1000);
 
   // Turn on the display and Show the welcome image
   digitalWrite(PIN_LCD_LED, HIGH);
@@ -324,13 +324,13 @@ void loop() {
     if(expParam[selectedExp].cs_duration > 0)
     {
       digitalWrite(PIN_CS_ENABLE, HIGH);
-      varres.setVolumeRaw(0);
+        varres.setVolume(0);
       ad9833.sendControl();
 
       while(true)
       {
         currentTime = millis();
-        varres.setVolumeRaw(\
+          varres.setVolume(\
             min(maxVolume, \
               round(maxVolume * (double)(currentTime - trial_onset_time_ms)/rampTime)\
               )\
@@ -370,7 +370,7 @@ void loop() {
       // if US is armed, check if us_onset has reached
       if(isUSArmed && (time_from_trial_onset_ms >= expParam[selectedExp].us_onset*1000))
       {
-        setUSState(true);
+        digitalWrite(PIN_IO_TERMINAL1, HIGH);
         isUSArmed = false;
         isUSOn = true;
       }
@@ -378,7 +378,7 @@ void loop() {
       // if US is on, check if us_duration has reached
       if(isUSOn && (time_from_trial_onset_ms > (expParam[selectedExp].us_onset*1000 + expParam[selectedExp].us_duration*1000)))
       {
-        setUSState(false);
+        digitalWrite(PIN_IO_TERMINAL1, LOW);
         isUSOn = false;
       }
  
