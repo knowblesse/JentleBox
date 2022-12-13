@@ -11,6 +11,7 @@ class SYUI
     void Val(); // Set Screen Params. included in the constructor.
     void DispWlcm(); // Welcome Message
     void DispWlcmImage(); // Welcome Image
+    void DispStop();
     void DispMode(String ModeList[3]);
     void DispVal();
     void DispInfo(String Variable[7]);

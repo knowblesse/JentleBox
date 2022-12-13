@@ -80,29 +80,8 @@ void displayInfo()
   outputArray[3] = String(expParam[selectedExp].us_duration,1);
   outputArray[4] = String(expParam[selectedExp].iti_duration_min,0);
   outputArray[5] = String(expParam[selectedExp].iti_duration_max,0);
-  outputArray[6] = String(expParam[selectedExp].num_trial,0);
+  outputArray[6] = String(expParam[selectedExp].num_trial);
   lcd->DispInfo(outputArray);
-}
-
-// +---------------------------------------------------------------------------------+
-// |                                Macro functions                                  |
-// +---------------------------------------------------------------------------------+
-void setOutputState(bool state)
-{
-  if(state)
-  {
-    digitalWrite(PIN_IO_TERMINAL1, HIGH);
-    digitalWrite(PIN_IO_TERMINAL2, HIGH);
-    digitalWrite(PIN_IO_TERMINAL3, HIGH);
-    digitalWrite(PIN_IO_TERMINAL4, HIGH);  
-  }
-  else
-  {
-    digitalWrite(PIN_IO_TERMINAL1, LOW);
-    digitalWrite(PIN_IO_TERMINAL2, LOW);
-    digitalWrite(PIN_IO_TERMINAL3, LOW);
-    digitalWrite(PIN_IO_TERMINAL4, LOW);
-  }
 }
 
 enum UIState
@@ -111,12 +90,6 @@ enum UIState
   UI_show_experiment_outline,
   UI_run_experiment
 };
-  
-void setUSState(bool state)
-{
-  digitalWrite(PIN_IO_TERMINAL1, state);
-}
-
 
 // +---------------------------------------------------------------------------------+
 // |                                 Main functions                                  |
@@ -142,10 +115,10 @@ void setup() {
   SPI.begin();
 
   // Initialize output pins
-  digitalWrite(PIN_IO_TERMINAL1, LOW);
-  digitalWrite(PIN_IO_TERMINAL2, LOW);
-  digitalWrite(PIN_IO_TERMINAL3, LOW);
-  digitalWrite(PIN_IO_TERMINAL4, LOW);
+  digitalWrite(PIN_IO_TERMINAL1, LOW); // Auto Start
+  digitalWrite(PIN_IO_TERMINAL2, LOW); // CS ON
+  digitalWrite(PIN_IO_TERMINAL3, LOW); // Shocker 1
+  digitalWrite(PIN_IO_TERMINAL4, LOW); // Shocker 2
 
   digitalWrite(PIN_CS_ENABLE, LOW);
 
@@ -171,7 +144,6 @@ void setup() {
   ad9833.sendControl();
   delay(500);
   ad9833.sendReset();
-  digitalWrite(PIN_CS_ENABLE, LOW);
   delay(1000);
 
   // Turn on the display and Show the welcome image
@@ -192,17 +164,28 @@ bool prevR1;
 bool prevR2;
 bool prevBtn;
 bool currBtn;
+unsigned long lastButtonClick = 0;
 
 void loop() {
   /******************************************************/
   /*                  Select Experiment                 */
   /******************************************************/
+  delay(500); // when back from the emergency_stop, this time is required to stay in select mode.
 
   while(currentUI != UI_run_experiment)
   {
     currR1 = !digitalRead(PIN_BTN_R1);
     currR2 = !digitalRead(PIN_BTN_R2);
     currBtn = !digitalRead(PIN_BTN_CLK);
+
+    currentTime = millis();
+
+    if(prevR1 != currR1 | prevR2 != currR2)
+    {
+      Serial.print(currR1);
+      Serial.print("|");
+      Serial.println(currR2);
+    }
 
     // Check Rotation
     if(prevR1 == true && prevR2 == true)
@@ -244,15 +227,19 @@ void loop() {
     {
       if (prevBtn == false)
       {
-        randomSeed(millis()); 
-        if (currentUI == UI_select_experiment)
+        if (currentTime - lastButtonClick > 100)
         {
-          displayInfo();
-          currentUI = UI_show_experiment_outline;
-        }
-        else // UI_show_experiment_outline
-        {
-          currentUI = UI_run_experiment;
+          lastButtonClick = currentTime;
+          randomSeed(millis()); 
+          if (currentUI == UI_select_experiment)
+          {
+            displayInfo();
+            currentUI = UI_show_experiment_outline;
+          }
+          else // UI_show_experiment_outline
+          {
+            currentUI = UI_run_experiment;
+          }
         }
       }
     }
@@ -270,6 +257,7 @@ void loop() {
   bool emergency_stop = false;
 
   long hab_onset_time_ms = millis();
+  digitalWrite(PIN_IO_TERMINAL1, HIGH);
 
   while(true)
   {
@@ -292,13 +280,21 @@ void loop() {
     currBtn = !digitalRead(PIN_BTN_CLK);
     if (currBtn == true && prevBtn == false)
     {
-      numButtonClick++;
+      if (currentTime - lastButtonClick > 100)
+      {
+        lastButtonClick = currentTime;
+        numButtonClick++;
+      }
     }
 
     if (numButtonClick > 3)
     {
       emergency_stop = true;
       currentUI = UI_select_experiment;
+      lcd->DispStop();
+      digitalWrite(PIN_IO_TERMINAL3, LOW);
+      digitalWrite(PIN_IO_TERMINAL4, LOW);
+      delay(3000);
       break;
     }
     prevBtn = currBtn;
@@ -323,9 +319,11 @@ void loop() {
     // if cs_duration is larger than zero, turn on the CS
     if(expParam[selectedExp].cs_duration > 0)
     {
-      digitalWrite(PIN_CS_ENABLE, HIGH);
-        varres.setVolume(0);
+      //digitalWrite(PIN_CS_ENABLE, HIGH);
+      varres.setVolume(0);
       ad9833.sendControl();
+
+      digitalWrite(PIN_IO_TERMINAL2, HIGH);
 
       while(true)
       {
@@ -355,7 +353,20 @@ void loop() {
       time_from_trial_onset_ms = millis() - trial_onset_time_ms;
       if ((time_from_trial_onset_ms - lastRefreshTime) > 500)
       {
-        lcd->DispCSUS(String(round(time_from_trial_onset_ms/1000),0).c_str(), "0", String(curr_trial).c_str());
+        if (isUSOn)
+        {
+          lcd->DispCSUS(\
+              String(round(time_from_trial_onset_ms/1000),0).c_str(),\
+              String(round((time_from_trial_onset_ms - expParam[selectedExp].us_onset*1000)/1000),0).c_str(),\
+              String(curr_trial).c_str());
+        }
+        else
+        {
+          lcd->DispCSUS(\
+              String(round(time_from_trial_onset_ms/1000),0).c_str(),\
+              "0",\
+              String(curr_trial).c_str());
+        }
         lastRefreshTime = time_from_trial_onset_ms;
       }
  
@@ -363,14 +374,16 @@ void loop() {
       if(isCSOn && (time_from_trial_onset_ms > expParam[selectedExp].cs_duration*1000))
       {
         ad9833.sendReset();
-        digitalWrite(PIN_CS_ENABLE, LOW);
+        //digitalWrite(PIN_CS_ENABLE, LOW); // if control CS using optocoupler, onset noise is generated.
         isCSOn = false;
+        digitalWrite(PIN_IO_TERMINAL2, LOW);
       }
  
       // if US is armed, check if us_onset has reached
       if(isUSArmed && (time_from_trial_onset_ms >= expParam[selectedExp].us_onset*1000))
       {
-        digitalWrite(PIN_IO_TERMINAL1, HIGH);
+        digitalWrite(PIN_IO_TERMINAL3, HIGH);
+        digitalWrite(PIN_IO_TERMINAL4, HIGH);
         isUSArmed = false;
         isUSOn = true;
       }
@@ -378,7 +391,8 @@ void loop() {
       // if US is on, check if us_duration has reached
       if(isUSOn && (time_from_trial_onset_ms > (expParam[selectedExp].us_onset*1000 + expParam[selectedExp].us_duration*1000)))
       {
-        digitalWrite(PIN_IO_TERMINAL1, LOW);
+        digitalWrite(PIN_IO_TERMINAL3, LOW);
+        digitalWrite(PIN_IO_TERMINAL4, LOW);
         isUSOn = false;
       }
  
@@ -389,8 +403,13 @@ void loop() {
       currBtn = !digitalRead(PIN_BTN_CLK);
       if (currBtn == true && prevBtn == false)
       {
-        numButtonClick++;
+        if (time_from_trial_onset_ms + trial_onset_time_ms - lastButtonClick > 100)
+        {
+          lastButtonClick = time_from_trial_onset_ms + trial_onset_time_ms;
+          numButtonClick++;
+        }
       }
+      prevBtn = currBtn;
 
       if (numButtonClick > 3)
       {
@@ -400,9 +419,14 @@ void loop() {
         ad9833.sendReset();
         isCSOn = false;
         // stop US
-        setUSState(false);
+        digitalWrite(PIN_IO_TERMINAL1, LOW);
+        digitalWrite(PIN_IO_TERMINAL2, LOW);
+        digitalWrite(PIN_IO_TERMINAL3, LOW);
+        digitalWrite(PIN_IO_TERMINAL4, LOW);
         isUSArmed = false;
         isUSOn = false;
+        lcd->DispStop();
+        delay(3000);
         break;
       }
     }
@@ -431,16 +455,29 @@ void loop() {
       currBtn = !digitalRead(PIN_BTN_CLK);
       if (currBtn == true && prevBtn == false)
       {
-        numButtonClick++;
+        if (currentTime - lastButtonClick > 100)
+        {
+          lastButtonClick = currentTime;
+          numButtonClick++;
+        }
       }
 
       if (numButtonClick > 3)
       {
         emergency_stop = true;
         currentUI = UI_select_experiment;
+        digitalWrite(PIN_IO_TERMINAL1, LOW);
+        digitalWrite(PIN_IO_TERMINAL2, LOW);
+        digitalWrite(PIN_IO_TERMINAL3, LOW);
+        digitalWrite(PIN_IO_TERMINAL4, LOW);
+        isUSOn = false;
+        lcd->DispStop();
+        delay(3000);
         break;
       }
       prevBtn = currBtn;
     }
   }
+  digitalWrite(PIN_IO_TERMINAL1, LOW);
+  displayMode();
 }

@@ -55,6 +55,15 @@ void SYUI::DispWlcmImage() {
   screen.updateDisplay();
 }
 
+void SYUI::DispStop() {
+  screen.clearDisplay();
+  screen.setFont(u8g2_font_moosenooks_tr);
+  int Len = screen.getStrWidth("Emergency Stop");
+  int Hgt = screen.getAscent()-screen.getDescent();
+  screen.drawStr((128-Len)/2,(64-Hgt)/2+Hgt,"EmergencyStop"); 
+  screen.updateDisplay();  
+}
+
 void SYUI::DispMode(String ModeList[3]) {
   screen.clearDisplay();
   screen.setFont(u8g2_font_moosenooks_tr);
