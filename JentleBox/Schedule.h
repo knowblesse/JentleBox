@@ -28,11 +28,11 @@ void initializeExpParam()
   expParam[1].name = "Seyoung";
   expParam[1].habituation_time = 120;
   expParam[1].cs_duration = 10;
-  expParam[1].us_onset = 8;
-  expParam[1].us_duration = 2;
-  expParam[1].iti_duration_min = 60;
-  expParam[1].iti_duration_max = 60;
-  expParam[1].num_trial = 30;
+  expParam[1].us_onset = 9;
+  expParam[1].us_duration = 1;
+  expParam[1].iti_duration_min = 120;
+  expParam[1].iti_duration_max = 120;
+  expParam[1].num_trial = 5;
 
   expParam[2].name = "Cat";
   expParam[2].habituation_time = 120;
@@ -61,4 +61,3 @@ void initializeExpParam()
   expParam[4].iti_duration_max = 5;
   expParam[4].num_trial = 30;
 }
-

@@ -12,7 +12,7 @@
 SYUI::SYUI(int PIN_LCD_CS, int PIN_LCD_A0, int PIN_LCD_RESET) : screen(U8G2_R2, PIN_LCD_CS, PIN_LCD_A0, PIN_LCD_RESET) {
   screen.begin();
   screen.clearDisplay();
-  screen.setContrast(100);
+  screen.setContrast(170);
   Val();
 }
 

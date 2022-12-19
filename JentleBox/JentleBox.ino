@@ -36,7 +36,7 @@ bool prevSoundOn = false;
 
 int freq = 2000;
 unsigned long rampTime = 100;
-int maxVolume = 100;
+int maxVolume = 150;
 
 SYUI *lcd;
 AD9833 ad9833 = AD9833(400000, PIN_DDS_CS);
