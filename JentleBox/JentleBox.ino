@@ -227,7 +227,7 @@ void loop() {
     {
       if (prevBtn == false)
       {
-        if (currentTime - lastButtonClick > 100)
+        if (currentTime - lastButtonClick > 500)
         {
           lastButtonClick = currentTime;
           randomSeed(millis()); 

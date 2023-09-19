@@ -12,7 +12,7 @@
 SYUI::SYUI(int PIN_LCD_CS, int PIN_LCD_A0, int PIN_LCD_RESET) : screen(U8G2_R2, PIN_LCD_CS, PIN_LCD_A0, PIN_LCD_RESET) {
   screen.begin();
   screen.clearDisplay();
-  screen.setContrast(170);
+  screen.setContrast(100);
   Val();
 }
 
@@ -43,9 +43,9 @@ void SYUI::Val(){
 void SYUI::DispWlcm() {
   screen.clearDisplay();
   screen.setFont(u8g2_font_moosenooks_tr);
-  int Len = screen.getStrWidth("Hello Choi Lab?");
+  int Len = screen.getStrWidth("Be 'J'entle");
   int Hgt = screen.getAscent()-screen.getDescent();
-  screen.drawStr((128-Len)/2,(64-Hgt)/2+Hgt,"Hello Choi Lab?"); 
+  screen.drawStr((128-Len)/2,(64-Hgt)/2+Hgt,"Be 'J'entle"); 
   screen.updateDisplay();  
 }
 
