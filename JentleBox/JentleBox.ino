@@ -36,7 +36,7 @@ bool prevSoundOn = false;
 
 int freq = 2000;
 unsigned long rampTime = 100;
-int maxVolume = 150;
+int maxVolume = 100;
 
 SYUI *lcd;
 AD9833 ad9833 = AD9833(400000, PIN_DDS_CS);
@@ -179,13 +179,6 @@ void loop() {
     currBtn = !digitalRead(PIN_BTN_CLK);
 
     currentTime = millis();
-
-    if(prevR1 != currR1 | prevR2 != currR2)
-    {
-      Serial.print(currR1);
-      Serial.print("|");
-      Serial.println(currR2);
-    }
 
     // Check Rotation
     if(prevR1 == true && prevR2 == true)
@@ -333,9 +326,9 @@ void loop() {
               round(maxVolume * (double)(currentTime - trial_onset_time_ms)/rampTime)\
               )\
             );
-        if (currentTime >= rampTime)
+        if (currentTime - trial_onset_time_ms >= rampTime)
         {
-          varres.setVolumeRaw(maxVolume);
+          //varres.setVolumeRaw(maxVolume);
           break;
         }
       }
